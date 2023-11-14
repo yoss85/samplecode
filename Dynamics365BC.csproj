@@ -1,0 +1,81 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+	<ConnectorRelease>1.0</ConnectorRelease>
+	<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+	<!--<PropertyGroup>
+		<ConnectorVersionTimestamp>$([System.DateTime]::UtcNow)</ConnectorVersionTimestamp>
+		<ConnectorBuildMajor>$([MSBuild]::Modulo($([System.DateTime]::Parse($(ConnectorVersionTimestamp)).Year),100))</ConnectorBuildMajor>
+		<ConnectorBuildMinor>$([System.DateTime]::Parse($(ConnectorVersionTimestamp)).DayOfYear.ToString("000"))</ConnectorBuildMinor>
+		<ConnectorRevision>$([System.DateTime]::Parse($(ConnectorVersionTimestamp)).ToString("HHmm"))</ConnectorRevision>
+		--><!-- This is what will be saved to by Visual Studio's package page. --><!--
+		<Version>1.0.0.0</Version>
+		--><!-- This will evaluate TRUE on an Azure build machine and generate the correct version --><!--
+		<Version Condition=" '$(BUILD_BUILDNUMBER)' != '' ">$(ConnectorRelease).$(ConnectorBuildMajor)$(ConnectorBuildMinor).$(ConnectorRevision)</Version>
+		--><!--<Version>$(ConnectorRelease).$(ConnectorBuildMajor)$(ConnectorBuildMinor).$(ConnectorRevision)</Version>--><!--
+	</PropertyGroup>
+	--><!-- This message will cause AzDo to update its reported version number for the build --><!--
+	<Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+		<Message Importance="high" Text="##vso[build.updatebuildnumber]$(Version)" />
+	</Target>-->
+
+  <ItemGroup>
+    <None Remove="Package\Dynamics365.yml" />
+  </ItemGroup>
+  	<PropertyGroup>
+		<AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+		<GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+	</PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CSharpFunctionalExtensions" Version="2.40.3" />
+    <PackageReference Include="FluentValidation" Version="11.8.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="7.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="7.0.13" />
+    <PackageReference Include="Polly.Contrib.WaitAndRetry" Version="1.1.1" />
+    <PackageReference Include="System.Text.Json" Version="7.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\avidconnect-connector\Connector.Shared\Connector.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Package\connector.yml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Package\layout.yml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Package\logo.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Package\settings-default.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Package\settings-schema.jsonc">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Package\settings-schema-schema.jsonc">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+		<Exec Condition="'$(OS)' == 'Windows_NT'" Command="xcopy /E /Y $(ProjectDir)$(OutDir)*.* $(ProjectDir)\src\..\..\avidconnect-connector\hosts\Connector.Service\$(OutDir)connectors\$(ProjectName)\" />
+		<Exec Condition="'$(OS)' == 'Windows_NT'" Command="$(ProjectDir)..\..\acpack\acpackage.exe --pack $(TargetDir)Package\layout.yml --package $(TargetDir)$(ProjectName).acpac --overwrite" />
+		<Exec Condition="'$(OS)' != 'Windows_NT'" Command="mkdir -p $(ProjectDir)src/../../avidconnect-connector/hosts/Connector.Service/$(OutDir)connectors/$(ProjectName)" />
+		<Exec Condition="'$(OS)' != 'Windows_NT'" Command="cp -a -r &quot;$(ProjectDir)$(OutDir).&quot; &quot;$(ProjectDir)src/../../avidconnect-connector/hosts/Connector.Service/$(OutDir)connectors/$(ProjectName)/&quot;" />
+		<Exec Condition="'$(OS)' != 'Windows_NT'" Command="chmod +x $(ProjectDir)..\..\acpack\acpackage" />
+		<Exec Condition="'$(OS)' != 'Windows_NT'" Command="$(ProjectDir)..\..\acpack\acpackage --pack $(TargetDir)Package\layout.yml --package $(TargetDir)$(ProjectName).acpac --overwrite" />
+	</Target>
+
+</Project>
+
